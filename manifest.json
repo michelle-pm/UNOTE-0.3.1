@@ -1,0 +1,9 @@
+{
+  "short_name": "UNOTE",
+  "name": "UNOTE Dashboard",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#120F1F",
+  "background_color": "#120F1F",
+  "description": "UNOTE: Ваш персональный дашборд для заметок и планов."
+}

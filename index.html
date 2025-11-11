@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UNOTE</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="description" content="A modern, minimalist dashboard application inspired by Apple's design language.">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'text-light': '#f3f4f6',
+              'text-dark': '#1e293b',
+              'text-secondary': '#d1d5db',
+              'glass-border': 'rgba(255, 255, 255, 0.1)',
+              'accent': '#FFFFFF',
+              'accent-dark': '#e2e8f0',
+              'accent-text': '#020617',
+            },
+            borderRadius: {
+              '4xl': '2rem',
+            },
+            boxShadow: {
+                'glass': 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.1), 0 2px 4px 0 rgba(0, 0, 0, 0.05)',
+            }
+          },
+        },
+      }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer base {
+            body {
+                @apply text-text-dark font-sans;
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+                /* Background is now handled by .app-background */
+                transition: background-color 0.3s ease;
+                letter-spacing: 0.5px;
+            }
+        }
+        
+        .app-background {
+          position: fixed;
+          inset: 0;
+          z-index: -1;
+          background-image: linear-gradient(160deg, #e2e8f0 0%, #3A6A74 100%);
+          overflow: hidden;
+        }
+
+        #app-bg-image {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            transition: filter 0.3s ease-out;
+            z-index: 1;
+        }
+
+        .app-background::after {
+          content: none;
+        }
+
+        body {
+            overscroll-behavior: none;
+        }
+
+        /* Webkit scrollbar styles */
+        ::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+          background-color: rgba(156, 163, 175, 0.5); /* gray-400 with 50% opacity */
+          border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+          background-color: rgba(156, 163, 175, 0.7);
+        }
+        
+        .widget-grain-container {
+            isolation: isolate;
+        }
+
+        .widget-grain-container::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            width: 100%;
+            height: 100%;
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.4" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)"/></svg>');
+            opacity: 0.07;
+            pointer-events: none;
+            border-radius: inherit;
+        }
+
+        /* Styles for react-grid-layout */
+        .react-grid-layout {
+          position: relative;
+          transition: height 200ms ease;
+        }
+        .react-grid-item {
+          transition: all 200ms ease;
+          transition-property: left, top, box-shadow;
+        }
+        .react-grid-item.cssTransforms {
+          transition-property: transform, box-shadow;
+        }
+        .react-grid-item.resizing {
+          z-index: 25 !important;
+          will-change: width, height;
+        }
+
+        .react-grid-item.react-draggable-dragging {
+          transition: none;
+          z-index: 20 !important;
+          will-change: transform;
+          box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25) !important;
+        }
+        
+        .is-dragging .react-grid-item {
+            box-shadow: none !important;
+        }
+
+        .react-grid-item.react-grid-placeholder {
+          background: #FFFFFF;
+          opacity: 0.3;
+          transition-duration: 100ms;
+          z-index: 2;
+          -webkit-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
+          -o-user-select: none;
+          user-select: none;
+          border-radius: 1rem; /* rounded-2xl */
+        }
+
+        /* Visible resize handle */
+        .react-grid-item .react-resizable-handle {
+            z-index: 100 !important;
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            bottom: 0;
+            right: 0;
+            cursor: se-resize;
+            background-image: url("data:image/svg+xml,%3csvg width='6' height='6' viewBox='0 0 6 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3e%3ccircle cx='1' cy='1' r='1' fill='%23e5e7eb'/%3e%3ccircle cx='5' cy='1' r='1' fill='%23e5e7eb'/%3e%3ccircle cx='1' cy='5' r='1' fill='%23e5e7eb'/%3e%3ccircle cx='5' cy='5' r='1' fill='%23e5e7eb'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: bottom 4px right 4px;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+        }
+        .react-grid-item:hover .react-resizable-handle {
+            opacity: 0.7;
+        }
+        .react-resizable-handle::after {
+            display: none !important;
+        }
+
+        .text-shadow {
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react-grid-layout": "https://aistudiocdn.com/react-grid-layout@^1.5.2",
+    "uuid": "https://aistudiocdn.com/uuid@^13.0.0",
+    "html2canvas": "https://aistudiocdn.com/html2canvas@^1.4.1",
+    "framer-motion": "https://aistudiocdn.com/framer-motion@^12.23.24",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.552.0",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.5.0/",
+    "recharts": "https://aistudiocdn.com/recharts@^2.12.7",
+    "vite": "https://aistudiocdn.com/vite@^5.3.3",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.0",
+    "firestore": "https://aistudiocdn.com/firestore@^1.1.6"
+  }
+}
+</script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>
