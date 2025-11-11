@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, Suspense, lazy, useCallback, createContext } from 'react';
 import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
-import { Widget, WidgetType, PlanData, PieData, LineData, TextData, WidgetData, TitleData, ChecklistData, ImageData, ArticleData, FolderData, TableData, GoalData, FileData, Project, User, ProjectMemberRole, Comment } from '../types';
+import { Widget, WidgetType, PlanData, PieData, LineData, TextData, WidgetData, TitleData, ChecklistData, ImageData, ArticleData, FolderData, TableData, GoalData, FileData, Project, User, ProjectMemberRole, Comment, RatingData } from '../types';
 import WidgetWrapper from './WidgetWrapper';
 import FolderWidget from './widgets/FolderWidget';
 import CommentPane from './CommentPane';
@@ -23,6 +23,7 @@ const ArticleWidget = lazy(() => import('./widgets/ArticleWidget'));
 const TableWidget = lazy(() => import('./widgets/TableWidget'));
 const GoalWidget = lazy(() => import('./widgets/GoalWidget'));
 const FileWidget = lazy(() => import('./widgets/FileWidget'));
+const RatingWidget = lazy(() => import('./widgets/RatingWidget'));
 
 
 interface DashboardProps {
@@ -289,6 +290,15 @@ const Dashboard: React.FC<DashboardProps> = ({
         return <GoalWidget data={widget.data as GoalData} updateData={updateData} isEditable={isWidgetEditable} />;
       case WidgetType.File:
         return <FileWidget data={widget.data as FileData} updateData={updateData} isEditable={isWidgetEditable} />;
+      case WidgetType.Rating:
+        return <RatingWidget 
+            data={widget.data as RatingData} 
+            updateData={updateData} 
+            isEditable={isWidgetEditable}
+            projectUsers={projectUsers}
+            allWidgets={allWidgets}
+            currentWidgetId={widget.id}
+        />;
       case WidgetType.Folder:
         return <FolderWidget 
             widget={widget}

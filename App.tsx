@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Layout } from 'react-grid-layout';
 import { v4 as uuidv4 } from 'uuid';
@@ -7,10 +5,11 @@ import html2canvas from 'html2canvas';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
 import { collection, query, where, onSnapshot, doc, addDoc, updateDoc, deleteDoc, getDoc, writeBatch, getDocs, orderBy, serverTimestamp, runTransaction, documentId, Timestamp, arrayUnion, arrayRemove, deleteField } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, storage } from './firebase';
+import { ref, deleteObject } from 'firebase/storage';
 
 
-import { Widget, WidgetType, Project, WidgetData, FolderData, User, LineData, PlanData, PieData, Comment, FriendRequest, Friend, ProjectMemberRole } from './types';
+import { Widget, WidgetType, Project, WidgetData, FolderData, User, LineData, PlanData, PieData, Comment, FriendRequest, Friend, ProjectMemberRole, ImageData, FileData } from './types';
 import useLocalStorage from './hooks/useLocalStorage';
 import { useFriends } from './hooks/useFriends';
 import { useFriendRequests } from './hooks/useFriendRequests';
@@ -515,8 +514,27 @@ const App: React.FC = () => {
                 layout.push({ ...newLayoutItemDefaults, x: newX, y: newY });
             });
             
+            // Recalculate folder height after adding a widget
+            Object.keys(GRID_COLS).forEach(breakpoint => {
+                const childrenLayout = childrenLayouts[breakpoint];
+                const folderLayoutItem = projectCopy.layouts[breakpoint]?.find((l: Layout) => l.i === addWidgetParentId);
+                
+                if (folderLayoutItem && !parentFolder.data.isCollapsed) {
+                  let newHeight = WIDGET_DEFAULTS[WidgetType.Folder].h;
+                  if (childrenLayout && childrenLayout.length > 0) {
+                    const PARENT_ROW_HEIGHT = 50, PARENT_MARGIN_Y = 16, NESTED_ROW_HEIGHT = 21, NESTED_MARGIN_Y = 8, FOLDER_HEADER_PX = 60, FOLDER_VERTICAL_PADDING_PX = 32;
+                    const maxRows = Math.max(0, ...childrenLayout.map(l => l.y + l.h));
+                    const contentPixelHeight = maxRows * NESTED_ROW_HEIGHT + (maxRows > 0 ? (maxRows - 1) * NESTED_MARGIN_Y : 0) + FOLDER_VERTICAL_PADDING_PX;
+                    const totalPixelHeight = contentPixelHeight + FOLDER_HEADER_PX;
+                    newHeight = Math.ceil((totalPixelHeight + PARENT_MARGIN_Y) / (PARENT_ROW_HEIGHT + PARENT_MARGIN_Y));
+                  }
+                  folderLayoutItem.h = Math.max(WIDGET_DEFAULTS[WidgetType.Folder].h, newHeight);
+                  parentFolder.data.expandedH = folderLayoutItem.h;
+                }
+            });
+
             projectCopy.widgets[parentFolderIndex] = { ...parentFolder, data: { ...parentFolder.data, childrenLayouts } };
-            await updateProjectInFirestore({ widgets: [...projectCopy.widgets, newWidget] });
+            await updateProjectInFirestore({ widgets: [...projectCopy.widgets, newWidget], layouts: projectCopy.layouts });
         }
     } else {
          const newLayouts = projectCopy.layouts;
@@ -550,11 +568,51 @@ const App: React.FC = () => {
     const projectCopy = safeDeepClone(activeProject);
     if (!projectCopy) return;
 
-    const widgetToRemove = projectCopy.widgets.find(w => w.id === id);
-    let currentWidgets = [...projectCopy.widgets];
+    const widgetsToRemove = new Set([id]);
+    const mainWidgetToRemove = projectCopy.widgets.find(w => w.id === id);
 
-    if (widgetToRemove?.parentId) {
-      const parentFolderIndex = currentWidgets.findIndex(w => w.id === widgetToRemove.parentId);
+    // Recursively find all child widgets if the main widget is a folder
+    if (mainWidgetToRemove?.type === WidgetType.Folder) {
+        const queue = [...projectCopy.widgets.filter(w => w.parentId === id)];
+        while (queue.length > 0) {
+            const current = queue.shift();
+            if (current) {
+                widgetsToRemove.add(current.id);
+                if (current.type === WidgetType.Folder) {
+                    queue.push(...projectCopy.widgets.filter(w => w.parentId === current.id));
+                }
+            }
+        }
+    }
+
+    // Delete associated files from storage
+    const storageDeletePromises: Promise<void>[] = [];
+    projectCopy.widgets.forEach(w => {
+        if (widgetsToRemove.has(w.id)) {
+            if (w.type === WidgetType.Image && (w.data as ImageData).storagePath) {
+                const imageRef = ref(storage, (w.data as ImageData).storagePath!);
+                storageDeletePromises.push(deleteObject(imageRef).catch(err => console.error(`Failed to delete image:`, err)));
+            } else if (w.type === WidgetType.File) {
+                (w.data as FileData).files.forEach(file => {
+                    if (file.storagePath) {
+                        const fileRef = ref(storage, file.storagePath);
+                        storageDeletePromises.push(deleteObject(fileRef).catch(err => console.error(`Failed to delete file:`, err)));
+                    }
+                });
+            }
+        }
+    });
+
+    try {
+        await Promise.all(storageDeletePromises);
+    } catch (error) {
+        console.error("Failed to delete one or more files from storage during widget removal:", error);
+    }
+
+    // Update layouts and widgets array
+    let currentWidgets = [...projectCopy.widgets];
+    if (mainWidgetToRemove?.parentId) {
+      const parentFolderIndex = currentWidgets.findIndex(w => w.id === mainWidgetToRemove.parentId);
       if (parentFolderIndex > -1) {
         const parentFolder = currentWidgets[parentFolderIndex] as Widget & { data: FolderData };
         if (parentFolder.data.childrenLayouts) {
@@ -567,13 +625,6 @@ const App: React.FC = () => {
           currentWidgets[parentFolderIndex] = { ...parentFolder, data: { ...parentFolder.data, childrenLayouts: newChildrenLayouts } };
         }
       }
-    }
-
-    const widgetsToRemove = new Set([id]);
-    if (widgetToRemove?.type === WidgetType.Folder) {
-        projectCopy.widgets.forEach(w => {
-            if (w.parentId === id) widgetsToRemove.add(w.id);
-        });
     }
 
     const finalWidgets = currentWidgets.filter(w => !widgetsToRemove.has(w.id));
@@ -613,6 +664,14 @@ const App: React.FC = () => {
         idMap.set(originalWidget.id, newId);
         const newWidget = JSON.parse(JSON.stringify(originalWidget)); // Safe to stringify a cleaned widget
         newWidget.id = newId;
+
+        // Reset file/image data to prevent shared storage references
+        if (newWidget.type === WidgetType.Image) {
+            newWidget.data = { ...WIDGET_DEFAULTS.image.data, title: newWidget.data.title };
+        } else if (newWidget.type === WidgetType.File) {
+            newWidget.data = { ...WIDGET_DEFAULTS.file.data, title: newWidget.data.title };
+        }
+
         newWidgets.push(newWidget);
     });
 
@@ -900,10 +959,28 @@ const App: React.FC = () => {
       if (!projectDoc.exists()) return;
 
       const projectData = projectDoc.data() as Project;
-      const widgetsToDelete = projectData.widgets.filter(w => w.type === WidgetType.File || w.type === WidgetType.Image);
       
-      // NOTE: Firebase Storage deletion logic would go here if it was used for files/images.
-      // Since it's Base64, we just delete the project doc.
+      // Delete all associated files from storage
+    const storageDeletePromises: Promise<void>[] = [];
+    projectData.widgets.forEach(w => {
+        if (w.type === WidgetType.Image && (w.data as ImageData).storagePath) {
+            const imageRef = ref(storage, (w.data as ImageData).storagePath!);
+            storageDeletePromises.push(deleteObject(imageRef).catch(err => console.error(`Failed to delete image ${ (w.data as ImageData).storagePath}:`, err)));
+        } else if (w.type === WidgetType.File) {
+            (w.data as FileData).files.forEach(file => {
+                if (file.storagePath) {
+                    const fileRef = ref(storage, file.storagePath);
+                    storageDeletePromises.push(deleteObject(fileRef).catch(err => console.error(`Failed to delete file ${file.storagePath}:`, err)));
+                }
+            });
+        }
+    });
+
+    try {
+        await Promise.all(storageDeletePromises);
+    } catch (error) {
+        console.error("An error occurred during bulk file deletion for project:", error);
+    }
       
       await deleteDoc(projectRef);
   };

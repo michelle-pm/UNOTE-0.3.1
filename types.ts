@@ -48,7 +48,8 @@ export enum WidgetType {
   Folder = 'folder',
   Table = 'table',
   Goal = 'goal',
-  File = 'file'
+  File = 'file',
+  Rating = 'rating'
 }
 
 // Widget Data Interfaces
@@ -80,7 +81,7 @@ export interface PieData extends BaseWidgetData {
   userSetColors?: boolean;
 }
 
-export type DependencyDataKey = 'current' | 'target' | 'part' | 'total';
+export type DependencyDataKey = 'current' | 'target' | 'part' | 'total' | 'line_sum_y';
 
 export interface LineDataPoint {
   id: string;
@@ -126,6 +127,7 @@ export interface ChecklistData extends BaseWidgetData {
 
 export interface ImageData extends BaseWidgetData {
   src: string | null;
+  storagePath?: string;
 }
 
 export interface ArticleData extends BaseWidgetData {
@@ -169,10 +171,21 @@ export interface FileObject {
     name: string;
     url: string;
     fileType: string;
+    storagePath: string;
 }
 
 export interface FileData extends BaseWidgetData {
     files: FileObject[];
+}
+
+export interface RatingSource {
+  userId: string;
+  widgetId: string;
+  dataKey: DependencyDataKey;
+}
+
+export interface RatingData extends BaseWidgetData {
+  sources: RatingSource[];
 }
 
 // Union type for all widget data
@@ -188,7 +201,8 @@ export type WidgetData =
   | FolderData
   | TableData
   | GoalData
-  | FileData;
+  | FileData
+  | RatingData;
 
 // Main Widget Interface
 export interface Widget {

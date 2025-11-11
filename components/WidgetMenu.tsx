@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, Variants } from 'framer-motion';
 import { WidgetType } from '../types';
-import { LayoutDashboard, Type, BarChart2, PieChart, ListChecks, Image, FileText, Newspaper, Columns, Folder, Target, Paperclip } from 'lucide-react';
+import { LayoutDashboard, Type, BarChart2, PieChart, ListChecks, Image, FileText, Newspaper, Columns, Folder, Target, Paperclip, Trophy } from 'lucide-react';
 
 interface WidgetMenuProps {
   onSelect: (type: WidgetType) => void;
@@ -13,6 +13,7 @@ const widgetOptions = [
   { type: WidgetType.Pie, label: 'Диаграмма', icon: PieChart },
   { type: WidgetType.Line, label: 'График', icon: BarChart2 },
   { type: WidgetType.Goal, label: 'Цель', icon: Target },
+  { type: WidgetType.Rating, label: 'Рейтинг', icon: Trophy },
   { type: WidgetType.Checklist, label: 'Список дел', icon: ListChecks },
   { type: WidgetType.Text, label: 'Заметка', icon: Type },
   { type: WidgetType.Title, label: 'Заголовок', icon: FileText },

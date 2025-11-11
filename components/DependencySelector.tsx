@@ -13,7 +13,7 @@ const DependencySelector: React.FC<DependencySelectorProps> = ({ allWidgets, cur
   const compatibleWidgets = allWidgets.filter(
     w =>
       w.id !== currentWidgetId &&
-      (w.type === WidgetType.Plan || w.type === WidgetType.Pie)
+      (w.type === WidgetType.Plan || w.type === WidgetType.Pie || w.type === WidgetType.Line)
   );
 
   const selectedWidget = compatibleWidgets.find(w => w.id === value?.widgetId);
@@ -30,6 +30,11 @@ const DependencySelector: React.FC<DependencySelectorProps> = ({ allWidgets, cur
         { value: 'part', label: 'Часть' },
         { value: 'total', label: 'Всего' },
       ];
+    }
+    if (widgetType === WidgetType.Line) {
+        return [
+          { value: 'line_sum_y', label: 'Сумма' },
+        ];
     }
     return [];
   };

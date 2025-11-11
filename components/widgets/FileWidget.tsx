@@ -1,7 +1,9 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { FileData, FileObject } from '../../types';
-import { Upload, X, File as FileIcon, Download, Plus } from 'lucide-react';
+import { Upload, X, File as FileIcon, Download, Plus, Loader2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { storage } from '../../firebase';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 interface FileWidgetProps {
   data: FileData;
@@ -12,38 +14,41 @@ interface FileWidgetProps {
 const FileWidget: React.FC<FileWidgetProps> = ({ data, updateData, isEditable }) => {
   const { files } = data;
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files;
-    if (selectedFiles && selectedFiles.length > 0) {
-      const filePromises = Array.from(selectedFiles).map((file: File) => {
-        return new Promise<FileObject>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            resolve({
-              id: uuidv4(),
-              name: file.name,
-              fileType: file.type,
-              url: e.target?.result as string,
-            });
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+    if (selectedFiles && selectedFiles.length > 0 && isEditable) {
+      setIsUploading(true);
+      const filePromises = Array.from(selectedFiles).map(async (file: File) => {
+        const storagePath = `files/${uuidv4()}-${file.name}`;
+        const storageRef = ref(storage, storagePath);
+        await uploadBytes(storageRef, file);
+        const downloadURL = await getDownloadURL(storageRef);
+        return {
+          id: uuidv4(),
+          name: file.name,
+          fileType: file.type,
+          url: downloadURL,
+          storagePath: storagePath,
+        };
       });
 
-      Promise.all(filePromises).then(newFiles => {
+      try {
+        const newFiles = await Promise.all(filePromises);
         updateData({
           ...data,
           files: [...data.files, ...newFiles],
         });
-      }).catch(error => {
-        console.error("Error reading files:", error);
-      });
+      } catch (error) {
+        console.error("Error uploading one or more files:", error);
+      } finally {
+        setIsUploading(false);
+      }
     }
     // Reset file input to allow uploading the same file again
-    if(event.target) {
-        event.target.value = '';
+    if (event.target) {
+      event.target.value = '';
     }
   };
 
@@ -52,18 +57,32 @@ const FileWidget: React.FC<FileWidgetProps> = ({ data, updateData, isEditable })
       fileInputRef.current?.click();
     }
   };
-  
-  const removeFile = (id: string) => {
+
+  const removeFile = async (id: string) => {
+    const fileToRemove = data.files.find(f => f.id === id);
+    if (fileToRemove?.storagePath) {
+      const fileRef = ref(storage, fileToRemove.storagePath);
+      try {
+        await deleteObject(fileRef);
+      } catch (error) {
+        console.error("Error deleting file from storage:", error);
+      }
+    }
     updateData({
       ...data,
       files: data.files.filter(f => f.id !== id),
     });
-  }
+  };
 
   return (
     <div className="h-full flex flex-col text-sm">
       <div className="flex-grow relative flex items-center justify-center rounded-xl bg-white/5 overflow-hidden">
-        {files && files.length > 0 ? (
+        {isUploading ? (
+          <div className="flex flex-col items-center justify-center text-text-secondary">
+            <Loader2 size={24} className="animate-spin" />
+            <span className="mt-2 text-xs font-medium">Загрузка...</span>
+          </div>
+        ) : files && files.length > 0 ? (
           <div className="w-full h-full flex flex-col">
             <ul className="flex-grow overflow-y-auto p-2 space-y-2">
               {files.map(file => (
@@ -72,9 +91,11 @@ const FileWidget: React.FC<FileWidgetProps> = ({ data, updateData, isEditable })
                   <div className="flex-grow overflow-hidden">
                     <p className="font-medium truncate text-xs">{file.name}</p>
                   </div>
-                  <a 
-                    href={file.url} 
+                  <a
+                    href={file.url}
                     download={file.name}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
                     className="p-1.5 rounded-full text-text-secondary hover:text-text-primary hover:bg-white/10 opacity-0 group-hover:opacity-100"
                     aria-label="Скачать файл"
@@ -83,22 +104,22 @@ const FileWidget: React.FC<FileWidgetProps> = ({ data, updateData, isEditable })
                   </a>
                   {isEditable && (
                     <button
-                        onClick={() => removeFile(file.id)}
-                        className="p-1.5 rounded-full text-red-500/70 hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100"
-                        aria-label="Удалить файл"
+                      onClick={() => removeFile(file.id)}
+                      className="p-1.5 rounded-full text-red-500/70 hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100"
+                      aria-label="Удалить файл"
                     >
-                        <X size={14} />
+                      <X size={14} />
                     </button>
                   )}
                 </li>
               ))}
             </ul>
             {isEditable && (
-                 <div className="absolute bottom-3 right-3">
-                    <button onClick={triggerFileInput} className="flex items-center justify-center w-8 h-8 bg-accent/80 text-accent-text hover:bg-accent rounded-full shadow-lg transition-colors">
-                        <Plus size={18} />
-                    </button>
-                 </div>
+              <div className="absolute bottom-3 right-3">
+                <button onClick={triggerFileInput} className="flex items-center justify-center w-8 h-8 bg-accent/80 text-accent-text hover:bg-accent rounded-full shadow-lg transition-colors">
+                  <Plus size={18} />
+                </button>
+              </div>
             )}
           </div>
         ) : (
@@ -117,7 +138,7 @@ const FileWidget: React.FC<FileWidgetProps> = ({ data, updateData, isEditable })
           onChange={handleFileChange}
           multiple
           className="hidden"
-          disabled={!isEditable}
+          disabled={!isEditable || isUploading}
         />
       </div>
     </div>

@@ -54,7 +54,15 @@ const LineWidget: React.FC<LineWidgetProps> = ({ data, updateData, allWidgets, c
   
   const updatePoint = (pointIndex: number, updatedPoint: Partial<LineDataPoint>) => {
       const newPoints = [...mainSeries.data];
-      newPoints[pointIndex] = { ...newPoints[pointIndex], ...updatedPoint };
+      const pointToUpdate = { ...newPoints[pointIndex], ...updatedPoint };
+      
+      // If the dependency becomes undefined after the merge, remove the key to prevent Firestore errors.
+      // This is more robust than checking updatedPoint alone.
+      if (pointToUpdate.dependency === undefined) {
+          delete pointToUpdate.dependency;
+      }
+      
+      newPoints[pointIndex] = pointToUpdate;
       updateMainSeries({ data: newPoints });
   };
   

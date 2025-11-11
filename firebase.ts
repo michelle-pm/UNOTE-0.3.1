@@ -7,7 +7,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyB3lM1fE7tbMAtDwWS1ZJT2Q2KAVo9Tirc",
   authDomain: "unote-c808a.firebaseapp.com",
   projectId: "unote-c808a",
-  storageBucket: "unote-c808a.firebasestorage.app",
+  storageBucket: "unote-c808a.appspot.com",
   messagingSenderId: "741839978281",
   appId: "1:741839978281:web:ef04a6295d6015d1004138",
   measurementId: "G-ZFMT67J8L3"

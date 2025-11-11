@@ -134,5 +134,12 @@ export const WIDGET_DEFAULTS: { [key in WidgetType]: WidgetDefaults } = {
       files: [],
     },
     w: 4, h: 4, minW: 3, minH: 3,
+  },
+  [WidgetType.Rating]: {
+    data: {
+      title: 'Рейтинг',
+      sources: [],
+    },
+    w: 3, h: 6, minW: 3, minH: 5,
   }
 };
