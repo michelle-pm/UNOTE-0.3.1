@@ -197,7 +197,9 @@ const FriendsModal: React.FC<FriendsModalProps> = ({
                         <div className="flex items-center gap-3 overflow-hidden">
                            <Avatar user={{ displayName: req.fromName }} className="w-9 h-9 flex-shrink-0" />
                            <div className="overflow-hidden">
+{/* FIX: Use fromEmail property from FriendRequest type. */}
                                 <p className="font-semibold truncate text-sm">{req.fromName || req.fromEmail}</p>
+{/* FIX: Use fromEmail property from FriendRequest type. */}
                                 {req.fromName && <p className="text-xs text-text-secondary truncate">{req.fromEmail}</p>}
                             </div>
                         </div>

@@ -23,7 +23,7 @@ export const WIDGET_DEFAULTS: { [key in WidgetType]: WidgetDefaults } = {
       color: '#D9C8FF',
       color2: '#B092FF',
     },
-    w: 4, h: 3, minW: 3, minH: 3,
+    w: 4, h: 4, minW: 3, minH: 4,
   },
   [WidgetType.Pie]: {
     data: {

@@ -103,15 +103,15 @@ const PieWidget: React.FC<PieWidgetProps> = ({ data, updateData, isEditable, wid
                 value={chart.partLabel} 
                 onChange={(e) => handleUpdate('partLabel', e.target.value)} 
                 onFocus={handleFocus} disabled={!isEditable} 
-                className="bg-transparent w-full text-center focus:outline-none p-1 text-text-secondary text-xs font-semibold rounded-md hover:bg-white/5 focus:bg-white/10 disabled:opacity-70 disabled:cursor-not-allowed"
+                className="bg-transparent w-full text-center focus:outline-none p-1 text-text-secondary text-xs font-semibold rounded-md hover:bg-white/5 focus:bg-white/10 disabled:opacity-70 disabled:cursor-not-allowed truncate"
             />
-            <div className="flex items-baseline justify-center w-full">
+            <div className="flex items-baseline justify-center w-full min-w-0">
                 <input 
                     type="number" 
                     value={chart.part} 
                     onChange={(e) => handleUpdate('part', e.target.value)} 
                     onFocus={handleFocus} disabled={!isEditable} 
-                    className="bg-transparent w-2/5 text-right focus:outline-none p-1 text-xl font-bold rounded-md hover:bg-white/5 focus:bg-white/10 disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="bg-transparent w-full min-w-0 text-right focus:outline-none p-1 text-xl font-bold rounded-md hover:bg-white/5 focus:bg-white/10 disabled:opacity-70 disabled:cursor-not-allowed"
                 />
                 <span className="text-text-secondary mx-1 text-lg">/</span>
                 <input 
@@ -119,7 +119,7 @@ const PieWidget: React.FC<PieWidgetProps> = ({ data, updateData, isEditable, wid
                     value={chart.total} 
                     onChange={(e) => handleUpdate('total', e.target.value)} 
                     onFocus={handleFocus} disabled={!isEditable} 
-                    className="bg-transparent w-2/5 text-left focus:outline-none p-1 text-lg text-text-secondary rounded-md hover:bg-white/5 focus:bg-white/10 disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="bg-transparent w-full min-w-0 text-left focus:outline-none p-1 text-lg text-text-secondary rounded-md hover:bg-white/5 focus:bg-white/10 disabled:opacity-70 disabled:cursor-not-allowed"
                 />
             </div>
         </div>

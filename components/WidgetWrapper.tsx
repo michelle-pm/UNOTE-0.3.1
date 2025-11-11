@@ -143,7 +143,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({
   
   return (
     <div 
-        className={`relative w-full h-full transition-shadow duration-300 rounded-3xl widget-grain-container text-text-light ${isMenuOpen ? 'z-30' : 'z-10'}`}
+        className={`relative w-full h-full transition-shadow duration-300 rounded-3xl widget-grain-container text-text-light ${isMenuOpen ? 'menu-is-open' : ''}`}
     >
         <div
             className="absolute inset-0 w-full h-full rounded-3xl -z-10"
@@ -312,7 +312,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({
                     {isWidgetEditable && (<GripVertical className="cursor-grab text-text-secondary/30" size={18} />)}
                 </div>
             </div>
-            <div className={`px-4 ${isFolder && folderData?.isCollapsed ? 'pb-0' : 'pb-4'} flex-grow overflow-hidden`}>
+            <div className={`px-4 ${isFolder && folderData?.isCollapsed ? 'pb-0' : 'pb-4'} flex-grow overflow-y-auto`}>
               <div ref={contentRef} className="w-full h-full">
                 <WidgetSizeContext.Provider value={{ width, height }}>
                   {children}

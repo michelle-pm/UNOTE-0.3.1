@@ -14,6 +14,7 @@ const PlanWidget: React.FC<PlanWidgetProps> = ({ data, updateData, isEditable })
   const { current, target, color, color2 } = data;
   const [showConfetti, setShowConfetti] = useState(false);
   const { width } = useContext(WidgetSizeContext);
+  const isNarrow = width < 200;
 
   const percentage = useMemo(() => {
     if (target <= 0) return 0;
@@ -41,7 +42,7 @@ const PlanWidget: React.FC<PlanWidgetProps> = ({ data, updateData, isEditable })
   const percentageFontSize = useMemo(() => {
     if (!width) return '3.75rem'; // fallback for text-6xl
     // Responsive font size based on widget width, with min and max values
-    return `${Math.max(24, Math.min(width / 4, 96))}px`;
+    return `${Math.max(24, Math.min(width / 4.5, 96))}px`;
   }, [width]);
 
   return (
@@ -74,7 +75,7 @@ const PlanWidget: React.FC<PlanWidgetProps> = ({ data, updateData, isEditable })
             </div>
         </div>
 
-        <div className="flex justify-around items-start w-full font-medium mt-2 text-center">
+        <div className={`flex justify-around items-start w-full font-medium mt-2 text-center ${isNarrow ? 'flex-col items-center gap-2' : ''}`}>
             <div className="flex flex-col items-center">
                  <input 
                     type="number" 

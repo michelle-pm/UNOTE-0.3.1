@@ -103,17 +103,19 @@ const LineWidget: React.FC<LineWidgetProps> = ({ data, updateData, allWidgets, c
       </div>
       
       {mainSeries.data.length > 0 && (
-      <div className="flex-grow overflow-y-auto mt-2 space-y-2 pr-1">
-        {mainSeries.data.map((p, pointIdx) => (
-          <div key={p.id} className="grid grid-cols-[1fr_1fr_1.5fr_auto] gap-2 items-center text-xs group bg-white/5 p-1 rounded-lg">
-            <input type="text" value={p.x} onChange={e => updatePoint(pointIdx, { x: e.target.value })} disabled={!isEditable} onFocus={handleFocus} className="bg-transparent rounded-md p-1 hover:bg-white/5 focus:bg-white/10 disabled:opacity-70 disabled:cursor-not-allowed w-full"/>
-            <input type="number" value={p.y} onChange={e => updatePoint(pointIdx, { y: parseFloat(e.target.value) || 0 })} disabled={!isEditable || !!p.dependency} onFocus={handleFocus} className="bg-transparent rounded-md p-1 hover:bg-white/5 focus:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed w-full" />
-            <div className="min-w-0">
-              <DependencySelector allWidgets={allWidgets} currentWidgetId={currentWidgetId} value={p.dependency} onChange={dep => updatePoint(pointIdx, { dependency: dep })} disabled={!isEditable}/>
+      <div className="flex-grow overflow-auto mt-2">
+        <div className="space-y-2 pr-1">
+            {mainSeries.data.map((p, pointIdx) => (
+            <div key={p.id} className="grid grid-cols-[1fr_1fr_1.5fr_auto] gap-2 items-center text-xs group bg-white/5 p-1 rounded-lg">
+                <input type="text" value={p.x} onChange={e => updatePoint(pointIdx, { x: e.target.value })} disabled={!isEditable} onFocus={handleFocus} className="bg-transparent rounded-md p-1 hover:bg-white/5 focus:bg-white/10 disabled:opacity-70 disabled:cursor-not-allowed w-full"/>
+                <input type="number" value={p.y} onChange={e => updatePoint(pointIdx, { y: parseFloat(e.target.value) || 0 })} disabled={!isEditable || !!p.dependency} onFocus={handleFocus} className="bg-transparent rounded-md p-1 hover:bg-white/5 focus:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed w-full" />
+                <div className="min-w-0">
+                <DependencySelector allWidgets={allWidgets} currentWidgetId={currentWidgetId} value={p.dependency} onChange={dep => updatePoint(pointIdx, { dependency: dep })} disabled={!isEditable}/>
+                </div>
+                {isEditable && <button onClick={() => deletePoint(p.id)} className="text-text-secondary/50 hover:text-red-500 justify-self-end opacity-0 group-hover:opacity-100"><Trash2 size={14} /></button>}
             </div>
-            {isEditable && <button onClick={() => deletePoint(p.id)} className="text-text-secondary/50 hover:text-red-500 justify-self-end opacity-0 group-hover:opacity-100"><Trash2 size={14} /></button>}
-          </div>
-        ))}
+            ))}
+        </div>
       </div>
       )}
       

@@ -259,28 +259,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   
   const handleMainDragStop = (layout: Layout[], oldItem: Layout, newItem: Layout) => {
     onDragStop();
-    if (oldItem.x === newItem.x && oldItem.y === newItem.y) return;
-
-    const draggedWidget = project.widgets.find(w => w.id === newItem.i);
-    // Dragging from main grid into a folder
-    if (draggedWidget && !draggedWidget.parentId) {
-        const droppedOnFolder = project.widgets.find(w => {
-            if (w.type !== WidgetType.Folder || w.id === newItem.i) return false;
-            const folderLayout = layout.find(l => l.i === w.id);
-            if (!folderLayout || (w.data as FolderData).isCollapsed) return false;
-            // Collision detection
-            return (
-                newItem.x < folderLayout.x + folderLayout.w &&
-                newItem.x + newItem.w > folderLayout.x &&
-                newItem.y < folderLayout.y + folderLayout.h &&
-                newItem.y + newItem.h > folderLayout.y
-            );
-        });
-
-        if (droppedOnFolder) {
-            onMoveWidget(newItem.i, droppedOnFolder.id);
-        }
-    }
+    // Logic for dropping into a folder is removed.
+    // The position update is handled by onLayoutChange.
   };
 
   const renderWidget = useCallback((widget: Widget, allWidgets: Widget[], isWidgetEditable: boolean) => {

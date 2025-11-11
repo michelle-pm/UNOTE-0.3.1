@@ -56,22 +56,25 @@ const FolderWidget: React.FC<FolderWidgetProps> = ({
   const isOverallEditable = currentUserRole === 'owner' || currentUserRole === 'editor' || currentUserRole === 'manager';
   
   const isThisFolderBeingDragged = isAnythingDragging && draggingWidgetId === widget.id;
-
-
-  const handleLayoutUpdate = (layout: Layout[], allLayouts: {[key: string]: Layout[]}) => {
-      onChildrenLayoutChange(widget.id, allLayouts);
-  };
   
-  const handleResize = (layout: Layout[], oldItem: Layout, newItem: Layout) => {
+  const handleChildrenResizeStop = (layout: Layout[], oldItem: Layout, newItem: Layout) => {
       const newAllLayouts = {
           ...(childrenLayouts || {}),
           [currentBreakpoint]: layout,
       };
       onChildrenLayoutChange(widget.id, newAllLayouts);
+      onResizeStop();
   };
   
-  const handleDragStopInFolder = (layout: Layout[], oldItem: Layout, newItem: Layout, placeholder: Layout, e: MouseEvent) => {
+  const handleChildrenDragStop = (layout: Layout[], oldItem: Layout, newItem: Layout, placeholder: Layout, e: MouseEvent) => {
     onDragStop();
+
+    const newAllLayouts = {
+        ...(childrenLayouts || {}),
+        [currentBreakpoint]: layout,
+    };
+    onChildrenLayoutChange(widget.id, newAllLayouts);
+    
     const folderElement = document.getElementById(`widget-${widget.id}`);
     if (!folderElement) return;
 
@@ -151,9 +154,7 @@ const FolderWidget: React.FC<FolderWidgetProps> = ({
                   breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
                   cols={NESTED_GRID_COLS}
                   rowHeight={21}
-                  compactType="vertical"
-                  onLayoutChange={handleLayoutUpdate}
-                  onResize={handleResize}
+                  compactType={null}
                   onBreakpointChange={setCurrentBreakpoint}
                   draggableHandle=".drag-handle"
                   draggableCancel=".no-drag, input, textarea, button, select"
@@ -161,8 +162,8 @@ const FolderWidget: React.FC<FolderWidgetProps> = ({
                   margin={[8, 8]}
                   isBounded={true}
                   onDragStart={onDragStart}
-                  onDragStop={handleDragStopInFolder}
-                  onResizeStop={onResizeStop}
+                  onDragStop={handleChildrenDragStop}
+                  onResizeStop={handleChildrenResizeStop}
                   isDraggable={isOverallEditable && !isMobile}
                   isResizable={isOverallEditable && !isMobile}
               >

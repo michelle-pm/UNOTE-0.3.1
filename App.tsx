@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Layout } from 'react-grid-layout';
 import { v4 as uuidv4 } from 'uuid';
@@ -790,6 +791,12 @@ const App: React.FC = () => {
               // Restore to expanded height, with a fallback to default.
               folderItem.h = folderData.expandedH || WIDGET_DEFAULTS[WidgetType.Folder].h;
           }
+          // Explicitly ensure the folder is not static, draggable, or resizable
+          // by removing any potentially "stuck" properties from a previous state.
+          // This allows the grid's global settings to take precedence.
+          delete (folderItem as Partial<Layout>).static;
+          delete (folderItem as Partial<Layout>).isDraggable;
+          delete (folderItem as Partial<Layout>).isResizable;
       });
       
       projectCopy.widgets[folderWidgetIndex] = { ...folder, data: folderData };

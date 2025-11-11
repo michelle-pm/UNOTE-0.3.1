@@ -29,6 +29,7 @@ export interface Friend extends FirestoreDocument {
 export interface FriendRequest extends FirestoreDocument {
   from: string; // UID of sender
   fromName: string; // Denormalized sender name
+  fromEmail: string; // Denormalized sender email
   to: string; // UID of recipient
   status: 'pending' | 'accepted' | 'rejected';
 }
