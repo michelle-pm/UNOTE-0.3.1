@@ -1,9 +1,9 @@
+
 import React, { useRef, useState } from 'react';
 import { FileData, FileObject } from '../../types';
 import { Upload, X, File as FileIcon, Download, Plus, Loader2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
-import { storage } from '../../firebase';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { uploadToCloudinary } from '../../utils/cloudinary';
 
 interface FileWidgetProps {
   data: FileData;
@@ -21,16 +21,15 @@ const FileWidget: React.FC<FileWidgetProps> = ({ data, updateData, isEditable })
     if (selectedFiles && selectedFiles.length > 0 && isEditable) {
       setIsUploading(true);
       const filePromises = Array.from(selectedFiles).map(async (file: File) => {
-        const storagePath = `files/${uuidv4()}-${file.name}`;
-        const storageRef = ref(storage, storagePath);
-        await uploadBytes(storageRef, file);
-        const downloadURL = await getDownloadURL(storageRef);
+        // Cloudinary автоматически определяет тип (auto), но можно форсировать raw для документов
+        const result = await uploadToCloudinary(file, 'auto');
         return {
           id: uuidv4(),
           name: file.name,
           fileType: file.type,
-          url: downloadURL,
-          storagePath: storagePath,
+          url: result.url,
+          // storagePath больше не используется с Cloudinary, но оставим для совместимости типов, если нужно
+          storagePath: '', 
         };
       });
 
@@ -59,15 +58,7 @@ const FileWidget: React.FC<FileWidgetProps> = ({ data, updateData, isEditable })
   };
 
   const removeFile = async (id: string) => {
-    const fileToRemove = data.files.find(f => f.id === id);
-    if (fileToRemove?.storagePath) {
-      const fileRef = ref(storage, fileToRemove.storagePath);
-      try {
-        await deleteObject(fileRef);
-      } catch (error) {
-        console.error("Error deleting file from storage:", error);
-      }
-    }
+    // При использовании Cloudinary мы просто удаляем ссылку из списка файлов в базе данных.
     updateData({
       ...data,
       files: data.files.filter(f => f.id !== id),

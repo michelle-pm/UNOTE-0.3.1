@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { User, Project } from '../types';
 import { getRandomEmoji } from '../utils/emojis';
@@ -12,7 +13,6 @@ import {
     reauthenticateWithCredential,
     EmailAuthProvider
 } from 'firebase/auth';
-// FIX: Import `serverTimestamp` and `Timestamp` to correctly handle date fields.
 import { doc, setDoc, getDoc, addDoc, collection, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -23,7 +23,7 @@ interface AuthContextType {
   login: (email: string, password?: string, remember?: boolean) => Promise<void>;
   logout: () => void;
   register: (name: string, email: string, password?: string) => Promise<void>;
-  updateUserProfile: (updates: { displayName?: string, photoFile?: File }) => Promise<void>;
+  updateUserProfile: (updates: { displayName?: string, photoFile?: File, photoURL?: string }) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
@@ -39,11 +39,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const userDocRef = doc(db, "users", firebaseUser.uid);
             const userDoc = await getDoc(userDocRef);
             if (userDoc.exists()) {
-                // FIX: Ensure the `id` from the document snapshot is included in the user object.
                 setUser({ id: userDoc.id, uid: firebaseUser.uid, ...userDoc.data() } as User);
             } else {
-                 // This might happen if Firestore doc creation failed after auth creation
-                // FIX: Create a complete `User` object for the local state, including `id` and `createdAt`.
                 const newUser: User = { 
                     id: firebaseUser.uid,
                     uid: firebaseUser.uid, 
@@ -52,7 +49,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     photoURL: firebaseUser.photoURL || undefined,
                     createdAt: Timestamp.now(),
                 };
-                // FIX: Write a server-side timestamp to Firestore for consistency.
                 await setDoc(userDocRef, { displayName: newUser.displayName, email: newUser.email, photoURL: newUser.photoURL, createdAt: serverTimestamp() });
                 setUser(newUser);
             }
@@ -77,7 +73,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     await updateProfile(firebaseUser, { displayName: name });
     
-    // FIX: Remove incorrect type annotation and add `createdAt` to ensure the object matches Firestore expectations.
     const newUser = { 
         displayName: name, 
         email,
@@ -85,7 +80,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
     await setDoc(doc(db, "users", firebaseUser.uid), newUser);
     
-    // Create a default project for the new user in Firestore
     const newProject: Omit<Project, 'id'> = {
         name: 'Мой проект',
         emoji: getRandomEmoji(),
@@ -99,21 +93,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await addDoc(collection(db, 'projects'), newProject);
   };
 
-  const updateUserProfile = async (updates: { displayName?: string, photoFile?: File }) => {
+  const updateUserProfile = async (updates: { displayName?: string, photoFile?: File, photoURL?: string }) => {
     const currentUser = auth.currentUser;
     if (!currentUser) throw new Error("Пользователь не авторизован.");
 
-    const { displayName, photoFile } = updates;
-    let photoURL: string | undefined = undefined;
+    const { displayName, photoFile, photoURL: directPhotoURL } = updates;
+    let finalPhotoURL: string | undefined = directPhotoURL;
     const userDocRef = doc(db, "users", currentUser.uid);
     const firestoreUpdates: { displayName?: string, photoURL?: string } = {};
 
     try {
-        // 1. Upload photo if it exists
+        // 1. Upload photo if it exists (legacy Firebase Storage way)
         if (photoFile) {
             const storageRef = ref(storage, `avatars/${currentUser.uid}`);
             await uploadBytes(storageRef, photoFile);
-            photoURL = await getDownloadURL(storageRef);
+            finalPhotoURL = await getDownloadURL(storageRef);
         }
         
         // 2. Prepare updates for Auth and Firestore
@@ -122,9 +116,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             authUpdates.displayName = displayName;
             firestoreUpdates.displayName = displayName;
         }
-        if (photoURL && photoURL !== currentUser.photoURL) {
-            authUpdates.photoURL = photoURL;
-            firestoreUpdates.photoURL = photoURL;
+        if (finalPhotoURL && finalPhotoURL !== currentUser.photoURL) {
+            authUpdates.photoURL = finalPhotoURL;
+            firestoreUpdates.photoURL = finalPhotoURL;
         }
         
         // 3. Update Firebase Auth profile only if there are changes

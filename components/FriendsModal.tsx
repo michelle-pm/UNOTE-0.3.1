@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, UserPlus, UserX, Check, MailQuestion, Search, Loader2 } from 'lucide-react';
+import { X, UserPlus, UserX, Check, MailQuestion, Search, Loader2, MessageSquare } from 'lucide-react';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, doc, runTransaction, serverTimestamp, addDoc, updateDoc, writeBatch, getDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, deleteDoc, addDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { User, FriendRequest } from '../types';
 import GlassButton from './GlassButton';
 import Avatar from './Avatar';
+import ChatView from './messaging/ChatView';
 
 interface FriendsModalProps {
   user: User;
@@ -32,6 +33,7 @@ const FriendsModal: React.FC<FriendsModalProps> = ({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const [selectedFriend, setSelectedFriend] = useState<User | null>(null);
 
   const handleSearchUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,7 +115,6 @@ const FriendsModal: React.FC<FriendsModalProps> = ({
         
         const batch = writeBatch(db);
 
-        // Find and schedule deletion of friendship documents
         const q1 = query(collection(db, "friends"), where("participant1", "==", currentUserId), where("participant2", "==", friendId));
         const q2 = query(collection(db, "friends"), where("participant1", "==", friendId), where("participant2", "==", currentUserId));
 
@@ -124,70 +125,68 @@ const FriendsModal: React.FC<FriendsModalProps> = ({
 
         await batch.commit();
 
+        if (selectedFriend?.uid === friendId) {
+            setSelectedFriend(null);
+        }
+
         setSuccess("Друг удален.");
     } catch (err: any) {
         console.error("Error removing friend:", err);
         setError(err.message || "Произошла ошибка при удалении друга.");
     }
   }
+  
+  const handleClose = () => {
+    setSelectedFriend(null);
+    onClose();
+  }
 
-  return (
-    <>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 z-40" />
-      <motion.div
-        key="friends-modal" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50 }}
-        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-        className="fixed top-4 right-4 w-[360px] bottom-4 origin-top-right bg-black/20 backdrop-blur-2xl z-50 flex flex-col border border-glass-border rounded-3xl text-text-light"
-      >
-        <div className="flex justify-between items-center flex-shrink-0 p-4 border-b border-glass-border">
-          <h2 className="text-xl font-bold">Друзья</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10"><X size={20} /></button>
-        </div>
-
-        <div className="flex flex-col flex-grow p-4 min-h-0">
-          <form onSubmit={handleSearchUser} className="flex items-center gap-2 mb-2 flex-shrink-0">
-            <input type="email" value={searchEmail} onChange={e => setSearchEmail(e.target.value)} placeholder="Поиск по email"
-              className="flex-grow w-full p-3 bg-white/5 rounded-lg border-2 border-transparent focus:border-accent focus:outline-none transition-colors" required />
-            <GlassButton type="submit" className="p-3 flex-shrink-0 w-[52px]">
-              {isSearching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
-            </GlassButton>
-          </form>
-
-          <div className="h-20 mb-2 flex-shrink-0">
-              {error && <p className="text-red-500 text-sm text-center pt-1">{error}</p>}
-              {success && <p className="text-green-500 text-sm text-center pt-1">{success}</p>}
-              <AnimatePresence>
-              {searchResult && (
-                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="p-2 rounded-lg bg-white/5 mt-2">
-                  {searchResult === 'not_found' ? (
-                      <p className="text-center text-sm text-text-secondary">Пользователь не найден.</p>
-                  ) : (
-                      <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3 overflow-hidden">
-                              <Avatar user={searchResult} className="w-9 h-9 flex-shrink-0" />
-                              <div className="overflow-hidden">
-                                  <p className="font-semibold truncate text-sm">{searchResult.displayName || searchResult.email}</p>
-                                  {searchResult.displayName && <p className="text-xs text-text-secondary truncate">{searchResult.email}</p>}
-                              </div>
-                          </div>
-                          <GlassButton onClick={() => handleSendRequest(searchResult)} className="px-3 py-1.5 text-sm"><UserPlus size={16}/></GlassButton>
-                      </div>
-                  )}
-                  </motion.div>
-              )}
-              </AnimatePresence>
+  const LeftPanelView = () => (
+     <div className="flex flex-col h-full bg-black/10">
+          <div className="p-4 border-b border-glass-border flex-shrink-0">
+            <h2 className="text-xl font-bold">Чаты и Друзья</h2>
           </div>
 
-          <div className="flex-grow overflow-y-auto pr-2 -mr-2 space-y-4">
-              {/* Friend Requests Section */}
+          <div className="p-4 flex-shrink-0">
+            <form onSubmit={handleSearchUser} className="flex items-center gap-2 mb-2">
+                <input type="email" value={searchEmail} onChange={e => setSearchEmail(e.target.value)} placeholder="Поиск по email"
+                className="flex-grow w-full p-3 bg-white/5 rounded-lg border-2 border-transparent focus:border-accent focus:outline-none transition-colors" required />
+                <GlassButton type="submit" className="p-3 flex-shrink-0 w-[52px]">
+                {isSearching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+                </GlassButton>
+            </form>
+
+            <div className="h-20">
+                {error && <p className="text-red-500 text-sm text-center pt-1">{error}</p>}
+                {success && <p className="text-green-500 text-sm text-center pt-1">{success}</p>}
+                <AnimatePresence>
+                {searchResult && (
+                    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="p-2 rounded-lg bg-white/5 mt-2">
+                    {searchResult === 'not_found' ? (
+                        <p className="text-center text-sm text-text-secondary">Пользователь не найден.</p>
+                    ) : (
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                                <Avatar user={searchResult} className="w-9 h-9 flex-shrink-0" />
+                                <div className="overflow-hidden">
+                                    <p className="font-semibold truncate text-sm">{searchResult.displayName || searchResult.email}</p>
+                                    {searchResult.displayName && <p className="text-xs text-text-secondary truncate">{searchResult.email}</p>}
+                                </div>
+                            </div>
+                            <GlassButton onClick={() => handleSendRequest(searchResult)} className="px-3 py-1.5 text-sm"><UserPlus size={16}/></GlassButton>
+                        </div>
+                    )}
+                    </motion.div>
+                )}
+                </AnimatePresence>
+            </div>
+          </div>
+
+          <div className="flex-grow overflow-y-auto px-4 space-y-4">
               {loadingRequests && (
-                <div className="flex justify-center items-center p-4">
-                    <Loader2 size={24} className="animate-spin text-text-secondary" />
-                </div>
+                <div className="flex justify-center items-center p-4"><Loader2 size={24} className="animate-spin text-text-secondary" /></div>
               )}
-              {requestsError && (
-                <p className="text-red-500 text-sm text-center p-2">{requestsError}</p>
-              )}
+              {requestsError && (<p className="text-red-500 text-sm text-center p-2">{requestsError}</p>)}
               {!loadingRequests && !requestsError && requests.length > 0 && (
                 <div>
                   <h3 className="font-semibold text-sm text-text-secondary px-2 mb-2">Запросы в друзья ({requests.length})</h3>
@@ -197,9 +196,7 @@ const FriendsModal: React.FC<FriendsModalProps> = ({
                         <div className="flex items-center gap-3 overflow-hidden">
                            <Avatar user={{ displayName: req.fromName }} className="w-9 h-9 flex-shrink-0" />
                            <div className="overflow-hidden">
-{/* FIX: Use fromEmail property from FriendRequest type. */}
                                 <p className="font-semibold truncate text-sm">{req.fromName || req.fromEmail}</p>
-{/* FIX: Use fromEmail property from FriendRequest type. */}
                                 {req.fromName && <p className="text-xs text-text-secondary truncate">{req.fromEmail}</p>}
                             </div>
                         </div>
@@ -215,32 +212,22 @@ const FriendsModal: React.FC<FriendsModalProps> = ({
                 </div>
               )}
 
-              {/* Friends List Section */}
-              {loadingFriends && (
-                  <div className="flex justify-center items-center p-4">
-                      <Loader2 size={24} className="animate-spin text-text-secondary" />
-                  </div>
-              )}
-              {friendsError && (
-                  <p className="text-red-500 text-sm text-center p-2">{friendsError}</p>
-              )}
+              {loadingFriends && (<div className="flex justify-center items-center p-4"><Loader2 size={24} className="animate-spin text-text-secondary" /></div>)}
+              {friendsError && (<p className="text-red-500 text-sm text-center p-2">{friendsError}</p>)}
               {!loadingFriends && !friendsError && friends.length > 0 && (
                   <div>
                       <h3 className="font-semibold text-sm text-text-secondary px-2 mb-2">Друзья ({friends.length})</h3>
-                      <div className="bg-white/5 rounded-lg p-2 space-y-1">
+                      <div className="space-y-1">
                           {friends.map(friend => (
-                            <div key={friend.uid} className="group flex items-center justify-between p-2 rounded-lg hover:bg-white/10 transition-colors">
+                            <button key={friend.uid} onClick={() => setSelectedFriend(friend)} className={`w-full group flex items-center justify-between p-2 rounded-lg text-left transition-colors ${selectedFriend?.uid === friend.uid ? 'bg-white/20' : 'hover:bg-white/10'}`}>
                               <div className="flex items-center gap-3 overflow-hidden">
                                 <Avatar user={friend} className="w-9 h-9 flex-shrink-0" />
                                 <div className="overflow-hidden">
                                     <p className="font-semibold truncate text-sm">{friend.displayName || friend.email}</p>
-                                    {friend.displayName && <p className="text-xs text-text-secondary truncate">{friend.email}</p>}
                                 </div>
                               </div>
-                              <div className="flex items-center flex-shrink-0">
-                                  <button onClick={() => handleRemoveFriend(friend.uid)} className="p-2 text-red-500/80 hover:text-red-500 rounded-full hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"><UserX size={18} /></button>
-                              </div>
-                            </div>
+                              <button onClick={(e) => { e.stopPropagation(); handleRemoveFriend(friend.uid); }} className="p-2 text-red-500/80 hover:text-red-500 rounded-full hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"><UserX size={18} /></button>
+                            </button>
                           ))}
                       </div>
                   </div>
@@ -254,6 +241,50 @@ const FriendsModal: React.FC<FriendsModalProps> = ({
                   </div>
               )}
           </div>
+        </div>
+  );
+
+  return (
+    <>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleClose} className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm" />
+      <motion.div
+        key="friends-modal" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+        className="fixed inset-4 md:inset-8 lg:inset-16 bg-black/20 backdrop-blur-2xl z-50 flex border border-glass-border rounded-3xl text-text-light overflow-hidden"
+      >
+        <div className="w-full md:w-[340px] border-r border-glass-border flex-shrink-0 flex-col hidden md:flex">
+          <LeftPanelView />
+        </div>
+
+        <div className="w-full flex flex-col">
+           <div className="flex justify-end items-center p-2 border-b border-glass-border md:hidden">
+              <button onClick={handleClose} className="p-2 rounded-full hover:bg-white/10"><X size={20} /></button>
+           </div>
+          <AnimatePresence mode="wait">
+            {selectedFriend ? (
+              <motion.div 
+                key={selectedFriend.uid}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+                className="h-full w-full"
+              >
+                <ChatView currentUser={user} chatPartner={selectedFriend} />
+              </motion.div>
+            ) : (
+              <div className="w-full h-full">
+                <div className="md:hidden h-full">
+                  <LeftPanelView />
+                </div>
+                <div className="hidden md:flex flex-col items-center justify-center h-full text-center text-text-secondary p-8">
+                  <MessageSquare size={48} className="mb-4 opacity-50"/>
+                  <p className="font-semibold text-lg">Выберите чат для общения</p>
+                  <p className="text-sm mt-1 max-w-xs">Начните переписку с вашими друзьями или найдите новых по email.</p>
+                </div>
+              </div>
+            )}
+          </AnimatePresence>
         </div>
       </motion.div>
     </>

@@ -237,11 +237,12 @@ const App: React.FC = () => {
         return;
     }
     const fetchUsers = async () => {
-        // FIX: Cast participant_uids to unknown[] to correctly use the type guard filter,
-        // ensuring type safety for data coming from Firestore.
-        // FIX: Explicitly type `uids` as `string[]` to ensure TypeScript correctly infers the array type after filtering.
-        const uids: string[] = ((Array.isArray(activeProject.participant_uids) ? activeProject.participant_uids : []) as unknown[])
-            .filter((uid: unknown): uid is string => typeof uid === 'string' && uid.length > 0);
+        // Safe casting to handle potential runtime type mismatches
+        // where participant_uids might not be string[] despite type definition.
+        const rawUids = activeProject?.participant_uids as unknown;
+        const uids: string[] = Array.isArray(rawUids) 
+            ? (rawUids as any[]).filter((uid: any) => typeof uid === 'string' && uid.length > 0)
+            : [];
 
         if (uids.length === 0) {
             setProjectUsers([]);

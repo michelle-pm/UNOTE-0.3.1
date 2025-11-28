@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, AlertTriangle, Loader2 } from 'lucide-react';
@@ -94,20 +95,20 @@ const CommentPane: React.FC<CommentPaneProps> = ({ widget, comments, projectUser
   return (
     <>
       <div
-        className="fixed inset-0 z-30"
+        className="fixed inset-0 z-30 bg-transparent"
         onClick={onClose}
       />
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        transition={{ ease: "easeOut", duration: 0.2 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
         style={{
           top: position.top,
           left: position.left,
           transformOrigin: position.transformOrigin,
         }}
-        className="fixed z-40 w-[340px] max-h-[480px] bg-[#161B29]/95 rounded-3xl shadow-2xl border border-glass-border flex flex-col text-text-light"
+        className="fixed z-40 w-[340px] max-h-[480px] bg-[#161B29]/95 rounded-3xl shadow-2xl border border-glass-border flex flex-col text-text-light backdrop-blur-xl"
       >
         <div className="flex-shrink-0 p-4 border-b border-glass-border flex justify-between items-center">
           <h3 className="font-bold truncate pr-4">Комментарии: {widget.data.title}</h3>

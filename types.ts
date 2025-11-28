@@ -34,6 +34,23 @@ export interface FriendRequest extends FirestoreDocument {
   status: 'pending' | 'accepted' | 'rejected';
 }
 
+// --- MESSAGING INTERFACES ---
+
+export interface Message {
+  id: string;
+  senderId: string;
+  text: string;
+  createdAt: Timestamp;
+}
+
+export interface Chat {
+  id: string;
+  participants: string[];
+  lastMessageText?: string;
+  lastMessageTimestamp?: Timestamp;
+}
+
+
 // --- EXISTING WIDGET/PROJECT INTERFACES ---
 
 export enum WidgetType {

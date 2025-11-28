@@ -1,9 +1,11 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, Upload, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import GlassButton from './GlassButton';
 import Avatar from './Avatar';
+import { uploadToCloudinary } from '../utils/cloudinary';
 
 const AccountSettingsView: React.FC = () => {
   const { user, updateUserProfile, changePassword } = useAuth();
@@ -63,13 +65,42 @@ const AccountSettingsView: React.FC = () => {
 
     setIsUploading(true);
     try {
+        let photoURL = user.photoURL || undefined;
+
+        if (avatarFile) {
+            try {
+               const result = await uploadToCloudinary(avatarFile, 'image');
+               photoURL = result.url;
+            } catch (err: any) {
+                throw new Error("Ошибка загрузки аватара в Cloudinary: " + err.message);
+            }
+        }
+
+        // Мы передаем только строку URL в updateUserProfile, так как файл мы уже загрузили
+        // Нам нужно модифицировать updateUserProfile в AuthContext, но пока мы хакнем это, 
+        // обновив профиль, но не передавая file объект, если мы уже получили URL.
+        // Однако AuthContext ждет photoFile. 
+        // Лучший способ - если бы updateUserProfile принимал photoURL напрямую.
+        // Но так как мы не можем менять AuthContext здесь без изменения интерфейса,
+        // Мы сделаем так: если мы загрузили файл, мы передадим его как null, 
+        // но сначала сами обновим профиль Firebase Auth и Firestore (или доработаем AuthContext).
+        
+        // В текущей реализации AuthContext.updateUserProfile жестко завязан на Firebase Storage если передан photoFile.
+        // Поэтому здесь мы просто обновим имя, а фото обновим через хак (или лучше обновить AuthContext).
+        
+        // Давайте сделаем проще: предположим, что AuthContext нужно обновить, чтобы он поддерживал photoURL.
+        // Но я не менял AuthContext в этом запросе. 
+        // ВАЖНО: Я обновлю AuthContext в XML ниже, чтобы он поддерживал photoURL напрямую.
+        
         await updateUserProfile({
             displayName: name.trim(),
-            ...(avatarFile && { photoFile: avatarFile })
+            photoURL: photoURL // Now passing URL directly
         });
+
         setAvatarFile(null); // Clear file after successful upload
         setProfileMessage({ type: 'success', text: 'Профиль сохранен!' });
     } catch (error: any) {
+        console.error(error);
         setProfileMessage({ type: 'error', text: error.message || 'Ошибка обновления.' });
     } finally {
         setIsUploading(false);

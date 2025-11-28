@@ -1,9 +1,8 @@
+
 import React, { useRef, useState } from 'react';
 import { ImageData } from '../../types';
 import { Upload, X, Loader2 } from 'lucide-react';
-import { storage } from '../../firebase';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { v4 as uuidv4 } from 'uuid';
+import { uploadToCloudinary } from '../../utils/cloudinary';
 
 interface ImageWidgetProps {
   data: ImageData;
@@ -12,43 +11,27 @@ interface ImageWidgetProps {
 }
 
 const ImageWidget: React.FC<ImageWidgetProps> = ({ data, updateData, isEditable }) => {
-  const { title, src, storagePath } = data;
+  const { title, src } = data;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleUpdate = (updates: Partial<ImageData>) => {
-    // When removing, ensure storagePath is explicitly set to undefined for clean-up
-    const newData = { ...data, ...updates };
-    if (updates.src === null) {
-      delete (newData as Partial<ImageData>).storagePath;
-    }
-    updateData(newData);
+    updateData({ ...data, ...updates });
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    setError(null);
     if (file && isEditable) {
       setIsUploading(true);
 
-      // If there's an old image, remove it from storage first
-      if (storagePath) {
-        const oldRef = ref(storage, storagePath);
-        try {
-          await deleteObject(oldRef);
-        } catch (error) {
-          console.warn("Old image deletion failed, continuing with upload:", error);
-        }
-      }
-
-      const newStoragePath = `images/${uuidv4()}-${file.name}`;
-      const storageRef = ref(storage, newStoragePath);
-
       try {
-        await uploadBytes(storageRef, file);
-        const downloadURL = await getDownloadURL(storageRef);
-        handleUpdate({ src: downloadURL, storagePath: newStoragePath });
-      } catch (error) {
+        const result = await uploadToCloudinary(file, 'image');
+        handleUpdate({ src: result.url });
+      } catch (error: any) {
         console.error("Error uploading image:", error);
+        setError("Ошибка загрузки. Проверьте настройки Cloudinary.");
       } finally {
         setIsUploading(false);
       }
@@ -67,17 +50,10 @@ const ImageWidget: React.FC<ImageWidgetProps> = ({ data, updateData, isEditable 
 
   const removeImage = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!storagePath) {
-      handleUpdate({ src: null });
-      return;
-    }
-    const fileRef = ref(storage, storagePath);
-    try {
-      await deleteObject(fileRef);
-      handleUpdate({ src: null });
-    } catch (error) {
-      console.error("Error deleting image from storage:", error);
-    }
+    // При использовании Cloudinary мы просто удаляем ссылку. 
+    // Для реального удаления с сервера нужен backend с секретным ключом, 
+    // но для frontend-only приложения просто забываем ссылку.
+    handleUpdate({ src: null });
   };
 
   return (
@@ -86,7 +62,7 @@ const ImageWidget: React.FC<ImageWidgetProps> = ({ data, updateData, isEditable 
         {isUploading ? (
           <div className="flex flex-col items-center justify-center text-text-secondary">
             <Loader2 size={24} className="animate-spin" />
-            <span className="mt-2 text-xs font-medium">Загрузка...</span>
+            <span className="mt-2 text-xs font-medium">Загрузка в облако...</span>
           </div>
         ) : src ? (
           <>
@@ -105,10 +81,11 @@ const ImageWidget: React.FC<ImageWidgetProps> = ({ data, updateData, isEditable 
           <button
             onClick={triggerFileInput}
             disabled={!isEditable}
-            className="flex flex-col items-center justify-center w-full h-full border-2 border-dashed border-white/10 rounded-xl text-text-secondary disabled:cursor-not-allowed disabled:opacity-70 enabled:hover:border-accent/30 enabled:hover:text-accent transition-colors"
+            className="flex flex-col items-center justify-center w-full h-full border-2 border-dashed border-white/10 rounded-xl text-text-secondary disabled:cursor-not-allowed disabled:opacity-70 enabled:hover:border-accent/30 enabled:hover:text-accent transition-colors relative"
           >
             <Upload size={24} />
             <span className="mt-2 text-xs font-medium">{isEditable ? 'Загрузить изображение' : 'Нет изображения'}</span>
+            {error && <span className="absolute bottom-2 text-red-400 text-[10px] text-center px-2">{error}</span>}
           </button>
         )}
         <input
