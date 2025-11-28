@@ -93,7 +93,7 @@ const DashboardGrid = React.memo(({
             isDraggable={isOverallEditable && !isMobile}
             isResizable={isOverallEditable && !isMobile}
         >
-            {widgets.map((widget: Widget) => {
+            {widgets.map((widget: Widget, index: number) => {
                 const isWidgetEditable = (() => {
                     if (!currentUserRole) return false;
                     if (['owner', 'editor'].includes(currentUserRole)) return true;
@@ -105,7 +105,13 @@ const DashboardGrid = React.memo(({
                 const isFolder = widget.type === WidgetType.Folder;
 
                 return (
-                    <div key={widget.id} id={`widget-${widget.id}`} className={isFolder ? 'folder-widget' : ''} style={{ overflow: 'visible' }}>
+                    <div 
+                        key={widget.id} 
+                        id={`widget-${widget.id}`} 
+                        className={isFolder ? 'folder-widget' : ''} 
+                        style={{ overflow: 'visible' }}
+                        data-tour={index === 0 ? "first-widget" : undefined}
+                    >
                         <WidgetWrapper
                             widget={widget}
                             onRemove={() => onRemoveWidget(widget.id)}
@@ -279,7 +285,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       case WidgetType.Title:
         return <TitleWidget data={widget.data as TitleData} updateData={updateData} isEditable={isWidgetEditable} />;
       case WidgetType.Checklist:
-        return <ChecklistWidget data={widget.data as ChecklistData} updateData={updateData} isEditable={isWidgetEditable} />;
+        return <ChecklistWidget data={widget.data as ChecklistData} updateData={updateData} isEditable={isWidgetEditable} projectUsers={projectUsers} />;
       case WidgetType.Image:
         return <ImageWidget data={widget.data as ImageData} updateData={updateData} isEditable={isWidgetEditable} />;
       case WidgetType.Article:

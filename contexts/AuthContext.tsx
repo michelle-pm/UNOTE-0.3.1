@@ -1,18 +1,9 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { User, Project } from '../types';
 import { getRandomEmoji } from '../utils/emojis';
 import { auth, db, storage } from '../firebase';
-import { 
-    onAuthStateChanged,
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    signOut,
-    updateProfile,
-    updatePassword,
-    reauthenticateWithCredential,
-    EmailAuthProvider
-} from 'firebase/auth';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
 import { doc, setDoc, getDoc, addDoc, collection, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -25,6 +16,8 @@ interface AuthContextType {
   register: (name: string, email: string, password?: string) => Promise<void>;
   updateUserProfile: (updates: { displayName?: string, photoFile?: File, photoURL?: string }) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  loginWithYandex: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,7 +27,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
         if (firebaseUser) {
             const userDocRef = doc(db, "users", firebaseUser.uid);
             const userDoc = await getDoc(userDocRef);
@@ -51,6 +44,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 };
                 await setDoc(userDocRef, { displayName: newUser.displayName, email: newUser.email, photoURL: newUser.photoURL, createdAt: serverTimestamp() });
                 setUser(newUser);
+                
+                // Create initial project for social login users if they are new
+                const newProject: Omit<Project, 'id'> = {
+                    name: 'Мой проект',
+                    emoji: getRandomEmoji(),
+                    isTeamProject: false,
+                    owner_uid: firebaseUser.uid,
+                    member_uids: {},
+                    participant_uids: [firebaseUser.uid],
+                    widgets: [],
+                    layouts: {},
+                };
+                await addDoc(collection(db, 'projects'), newProject);
             }
         } else {
             setUser(null);
@@ -63,34 +69,47 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string, password?: string) => {
     if (!password) throw new Error("Пароль не указан.");
-    await signInWithEmailAndPassword(auth, email, password);
+    await auth.signInWithEmailAndPassword(email, password);
   };
 
   const register = async (name: string, email: string, password?: string) => {
     if (!password) throw new Error("Пароль не указан.");
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
     const firebaseUser = userCredential.user;
     
-    await updateProfile(firebaseUser, { displayName: name });
-    
-    const newUser = { 
-        displayName: name, 
-        email,
-        createdAt: serverTimestamp(),
-    };
-    await setDoc(doc(db, "users", firebaseUser.uid), newUser);
-    
-    const newProject: Omit<Project, 'id'> = {
-        name: 'Мой проект',
-        emoji: getRandomEmoji(),
-        isTeamProject: false,
-        owner_uid: firebaseUser.uid,
-        member_uids: {},
-        participant_uids: [firebaseUser.uid],
-        widgets: [],
-        layouts: {},
-    };
-    await addDoc(collection(db, 'projects'), newProject);
+    if (firebaseUser) {
+        await firebaseUser.updateProfile({ displayName: name });
+        
+        const newUser = { 
+            displayName: name, 
+            email,
+            createdAt: serverTimestamp(),
+        };
+        await setDoc(doc(db, "users", firebaseUser.uid), newUser);
+        
+        const newProject: Omit<Project, 'id'> = {
+            name: 'Мой проект',
+            emoji: getRandomEmoji(),
+            isTeamProject: false,
+            owner_uid: firebaseUser.uid,
+            member_uids: {},
+            participant_uids: [firebaseUser.uid],
+            widgets: [],
+            layouts: {},
+        };
+        await addDoc(collection(db, 'projects'), newProject);
+    }
+  };
+  
+  const loginWithGoogle = async () => {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await auth.signInWithPopup(provider);
+  };
+
+  const loginWithYandex = async () => {
+    // Requires Yandex provider to be enabled in Firebase Console
+    const provider = new firebase.auth.OAuthProvider('yandex.ru');
+    await auth.signInWithPopup(provider);
   };
 
   const updateUserProfile = async (updates: { displayName?: string, photoFile?: File, photoURL?: string }) => {
@@ -103,14 +122,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const firestoreUpdates: { displayName?: string, photoURL?: string } = {};
 
     try {
-        // 1. Upload photo if it exists (legacy Firebase Storage way)
         if (photoFile) {
             const storageRef = ref(storage, `avatars/${currentUser.uid}`);
             await uploadBytes(storageRef, photoFile);
             finalPhotoURL = await getDownloadURL(storageRef);
         }
         
-        // 2. Prepare updates for Auth and Firestore
         const authUpdates: { displayName?: string, photoURL?: string } = {};
         if (displayName && displayName !== currentUser.displayName) {
             authUpdates.displayName = displayName;
@@ -121,17 +138,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             firestoreUpdates.photoURL = finalPhotoURL;
         }
         
-        // 3. Update Firebase Auth profile only if there are changes
         if (Object.keys(authUpdates).length > 0) {
-            await updateProfile(currentUser, authUpdates);
+            await currentUser.updateProfile(authUpdates);
         }
         
-        // 4. Update Firestore user document only if there are changes
         if (Object.keys(firestoreUpdates).length > 0) {
             await setDoc(userDocRef, firestoreUpdates, { merge: true });
         }
         
-        // 5. Update local state immediately for instant feedback
         if (Object.keys(firestoreUpdates).length > 0) {
             setUser(prev => prev ? { 
                 ...prev, 
@@ -153,9 +167,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     try {
-        const credential = EmailAuthProvider.credential(auth.currentUser.email, currentPassword);
-        await reauthenticateWithCredential(auth.currentUser, credential);
-        await updatePassword(auth.currentUser, newPassword);
+        const credential = firebase.auth.EmailAuthProvider.credential(auth.currentUser.email, currentPassword);
+        await auth.currentUser.reauthenticateWithCredential(credential);
+        await auth.currentUser.updatePassword(newPassword);
 
     } catch (error: any) {
         console.error("Password change error:", error.code);
@@ -167,7 +181,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = async () => {
-    await signOut(auth);
+    await auth.signOut();
   };
 
   const value = {
@@ -177,7 +191,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     logout,
     register,
     updateUserProfile,
-    changePassword
+    changePassword,
+    loginWithGoogle,
+    loginWithYandex
   };
 
   return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;

@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Edit3, LogOut, Settings, Save, Users, MoreHorizontal, Copy, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, Edit3, LogOut, Settings, Save, Users, MoreHorizontal, Copy, ArrowLeft, HelpCircle } from 'lucide-react';
 import { Project, User } from '../types';
 import Logo from './Logo';
 import Avatar from './Avatar';
 import AccountSettingsView from './AccountSettingsView';
+import { useOnboarding } from '../contexts/OnboardingContext';
 
 interface SidebarProps {
   onSave: () => void;
@@ -32,6 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [view, setView] = useState<'projects' | 'settings'>('projects');
   
+  const { startTour } = useOnboarding();
   const menuRef = useRef<HTMLDivElement>(null);
 
   const handleRenameStart = (project: Project) => {
@@ -139,8 +141,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           <Save size={18} />
           <span>Сохранить как PNG</span>
         </button>
+        <button onClick={startTour} className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors text-accent">
+            <HelpCircle size={18} />
+            <span>Обучение</span>
+        </button>
         
-        <div className="border-t border-glass-border pt-4 mt-2 flex items-center justify-between">
+        <div className="border-t border-glass-border pt-4 mt-2 flex items-center justify-between" data-tour="sidebar-profile">
           <div className="flex items-center gap-3 overflow-hidden">
              {user && <Avatar user={user} />}
              <div className="flex flex-col overflow-hidden">

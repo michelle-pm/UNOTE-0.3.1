@@ -36,11 +36,19 @@ export interface FriendRequest extends FirestoreDocument {
 
 // --- MESSAGING INTERFACES ---
 
+export interface MessageFile {
+  url: string;
+  name: string;
+  type: string;
+}
+
 export interface Message {
   id: string;
   senderId: string;
   text: string;
   createdAt: Timestamp;
+  editedAt?: Timestamp;
+  file?: MessageFile;
 }
 
 export interface Chat {
@@ -48,6 +56,9 @@ export interface Chat {
   participants: string[];
   lastMessageText?: string;
   lastMessageTimestamp?: Timestamp;
+  lastSenderId?: string;
+  // Map of User UID -> Timestamp when they last read the chat
+  readStatus?: { [uid: string]: Timestamp }; 
 }
 
 
@@ -188,7 +199,7 @@ export interface FileObject {
     name: string;
     url: string;
     fileType: string;
-    storagePath: string;
+    storagePath?: string;
 }
 
 export interface FileData extends BaseWidgetData {

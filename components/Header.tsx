@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Menu, Plus, Undo2, Users, Palette } from 'lucide-react';
+import { Menu, Plus, Undo2, Users, Palette, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GlassButton from './GlassButton';
 import { User } from '../types';
@@ -18,6 +18,7 @@ interface HeaderProps {
   projectColors: { color1: string; color2: string };
   onToggleFriendsModal: () => void;
   hasPendingRequests: boolean;
+  hasUnreadMessages: boolean;
   projectUsers: User[];
   ownerUid: string;
   isTeamProject: boolean;
@@ -31,7 +32,7 @@ const UserAvatar: React.FC<{ user: User, isOwner: boolean }> = ({ user, isOwner 
 
 const Header: React.FC<HeaderProps> = ({ 
     title, onToggleSidebar, onAddWidget, showAddWidgetButton, onUndo, canUndo, 
-    onUpdateGradients, projectColors, onToggleFriendsModal, hasPendingRequests,
+    onUpdateGradients, projectColors, onToggleFriendsModal, hasPendingRequests, hasUnreadMessages,
     projectUsers, ownerUid, isTeamProject
 }) => {
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
@@ -67,10 +68,11 @@ const Header: React.FC<HeaderProps> = ({
           onClick={onToggleSidebar} 
           className="p-2 rounded-full hover:bg-black/10 transition-colors"
           aria-label="Toggle Sidebar"
+          data-tour="sidebar-toggle"
         >
           <Menu size={20} />
         </motion.button>
-        <h1 className="text-lg font-bold truncate">{title}</h1>
+        <h1 className="text-lg font-bold truncate" data-tour="header-title">{title}</h1>
          <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={onUndo}
@@ -87,6 +89,7 @@ const Header: React.FC<HeaderProps> = ({
                 onClick={() => setIsColorPickerOpen(prev => !prev)}
                 className="p-2 rounded-full hover:bg-black/10 transition-colors"
                 aria-label="Sync Gradients"
+                data-tour="palette-button"
             >
                 <Palette size={18} />
             </motion.button>
@@ -107,9 +110,30 @@ const Header: React.FC<HeaderProps> = ({
           onClick={onToggleFriendsModal}
           className="p-2 rounded-full hover:bg-white/10 transition-colors relative"
           aria-label="Friends"
+          data-tour="friends-button"
         >
           <Users size={18} />
-          {hasPendingRequests && <div className="absolute top-1 right-1 w-2 h-2 bg-accent rounded-full animate-pulse" />}
+          {hasPendingRequests && (
+             <span className="absolute top-1.5 right-1 flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent"></span>
+             </span>
+          )}
+        </motion.button>
+
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={onToggleFriendsModal} // Reuses friend modal for now as it contains Chat
+          className="p-2 rounded-full hover:bg-white/10 transition-colors relative mr-2"
+          aria-label="Messages"
+        >
+          <MessageCircle size={18} />
+          {hasUnreadMessages && (
+             <span className="absolute top-1.5 right-1 flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-500 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-violet-500 shadow-[0_0_8px_rgba(139,92,246,0.8)]"></span>
+             </span>
+          )}
         </motion.button>
         
         <div className="flex items-center -space-x-2 ml-2">
@@ -126,10 +150,12 @@ const Header: React.FC<HeaderProps> = ({
         </div>
         
         {showAddWidgetButton && (
-          <GlassButton onClick={onAddWidget} aria-label="Add Widget" className="ml-2">
-            <Plus size={18} />
-            <span className="hidden sm:inline">Виджет</span>
-          </GlassButton>
+          <div data-tour="add-widget-btn">
+            <GlassButton onClick={onAddWidget} aria-label="Add Widget" className="ml-2">
+                <Plus size={18} />
+                <span className="hidden sm:inline">Виджет</span>
+            </GlassButton>
+          </div>
         )}
       </div>
     </header>

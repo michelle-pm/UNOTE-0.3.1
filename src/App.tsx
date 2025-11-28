@@ -105,6 +105,7 @@ const cleanProjectForSerialization = (project: Project): Project => {
 const AppContent: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
   
+  // Use notifications hook which now uses Firestore read status
   const { hasUnreadMessages } = useNotifications(user);
   const { addToast } = useToast();
   

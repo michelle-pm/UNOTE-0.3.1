@@ -44,7 +44,7 @@ const AuthPage: React.FC = () => {
             <p className="text-center text-text-secondary mb-8">
                 {isLogin ? 'Добро пожаловать обратно!' : 'Создайте новый аккаунт'}
             </p>
-        
+            
             <form onSubmit={handleSubmit}>
                 <AnimatePresence mode="popLayout">
                     {!isLogin && (
